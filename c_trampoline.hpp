@@ -110,7 +110,4 @@ struct __attribute__((__packed__)) c_trampoline
         this_callback_void method; // DO NOT change the order of this member or asm_code will be invalid!
 };
 
-
-
 #endif /* C_TRAMPOLINE_H */
-// ARM GCC 11.2.1 -mcpu=cortex-m0plus -mthumb -Wl,--build-id
