@@ -9,7 +9,7 @@ This cursed code generates a trampoline inside the object's data and executes it
 The trampoline itself just fetches the correct `this` pointer and then jumps to the member function.
 This is cursed for several reasons:
 
- - It executes code as data. If you or your RTOS enable XN in the MPU, this will crash.
+ - It executes data as code. If you or your RTOS enable XN in the MPU, this will crash.
  - The assembly instructions are hard coded as ARM Thumb opcodes, so it's not portable.
  - There's a race condition lurking in the trampoline if you try to destruct the trampoline object.
    You must guarantee that the trampoline cannot be invoked or in-progress *before* destruction.
