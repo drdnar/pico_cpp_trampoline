@@ -16,7 +16,7 @@ This is cursed for several reasons:
  - The assembly instructions are hard coded as ARM Thumb opcodes, so it's not portable.
    However, the Pico SDK says to use the normal ARM ABI calling convention and that's what this implements,
    so if your Thumb-based microcontroller's SDK says the same, it should work.
-   I haven't check if this includes the STM32 line.
+   I haven't checked if this includes the STM32 line.
  - There's a race condition lurking in the trampoline if you try to destruct the trampoline object.
    You must guarantee that the trampoline cannot be invoked or in-progress **before** destruction.
    If it's possible for destruction to occur at a time when the triggering event can occur, 
