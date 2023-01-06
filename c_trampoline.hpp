@@ -1,5 +1,6 @@
 #ifndef C_TRAMPOLINE_H
 #define C_TRAMPOLINE_H
+#include <stdint.h>
 
 /**
  * @brief Adapts a non-static class method for use with a no-arguments C callback.
