@@ -2,8 +2,25 @@
 #define C_TRAMPOLINE_H
 #include <stdint.h>
 
+#ifndef __cpp_concepts
+#error "Support for C++ concepts is required."
+#endif /* __cpp_concepts */
+
 /**
- * @brief Adapts a non-static class method for use with a no-arguments C callback.
+ * @brief Check if a type can be passed in a single Thumb register. 
+ */
+template<typename T> concept FitsInRegister = sizeof(T) <= 4;
+/**
+ * @brief Check if a type is actually just void.
+ */
+template<typename T> concept VoidReturn = requires (T (*x)()) { x(); };
+/**
+ * @brief Check if the number of arguments passed is less-than-or-equal-to some value.
+ */
+template<int Count, typename ... Args> concept NotTooManyArgs = sizeof...(Args) <= Count; 
+
+/**
+ * @brief Adapts a non-static class method for use with a C callback.
  * 
  * @note There is no getter/setting for the object reference.
  * Instead, the intended usage is that the object will have this as a member and then, if needed,
@@ -23,30 +40,33 @@
  * possibly properly the containing object's job.
  * 
  * @tparam T The class type is required because this adapts a pointer-to-method, which is class-specific.
+ * @tparam R Return type of function pointer type being adapted.
+ * @tparam Args List of zero to three additional parameters to the function.
  */
-template <typename T>
+template<typename T, typename R, FitsInRegister... Args>
+requires ((sizeof(R) <= 8) || VoidReturn<R>) && NotTooManyArgs<3, Args...>
 struct __attribute__((__packed__)) c_trampoline
 {
         /**
-         * @brief Type of a pointer-to-member function.
+         * @brief Type of a member function pointer.
          * 
          * Required for syntax reasons.
          */
-        typedef void (T::*this_callback_void)();
+        typedef R (T::*member_function_pointer)(Args...);
         /**
          * @brief Type of a function pointer.
          * 
          * Also used for syntax reasons.
          */
-        typedef void (*c_callback_void)();
-        
+        typedef R (*function_pointer)(Args...);
+
         /**
          * @brief Only reasonable constructor.
          * 
          * @param self Object to bind this wrapper to.
          * @param method Member function pointer you want adapted for use with C.
          */
-        c_trampoline(T& self, this_callback_void method)
+        c_trampoline(T& self, member_function_pointer method)
             : self { &self }, method { method }
         {
             // and that's all
@@ -60,16 +80,16 @@ struct __attribute__((__packed__)) c_trampoline
         /**
          * @brief Returns a function pointer that can be passed to whatever wants a legit callback.
          */
-        operator c_callback_void() const
+        operator function_pointer() const
         {
-            return reinterpret_cast<c_callback_void>((uint8_t*)asm_code + 1); // Plus one to stay in Thumb node.
+            return reinterpret_cast<function_pointer>((uint8_t*)asm_code + 1); // Plus one to stay in Thumb node.
         }
         /**
          * @brief Returns a function pointer that can be passed to whatever wants a legit callback.
          */
-        c_callback_void get_callback()
+        function_pointer get_callback() const
         {
-            return reinterpret_cast<c_callback_void>((uint8_t*)asm_code + 1);
+            return reinterpret_cast<function_pointer>((uint8_t*)asm_code + 1);
         }
         
         /**
@@ -77,29 +97,54 @@ struct __attribute__((__packed__)) c_trampoline
          * 
          * This saves 16 bytes of RAM over making an entirely new trampoline.
          */
-        void set_method(this_callback_void new_method)
+    	void set_method(member_function_pointer new_method)
         {
             method = new_method;
         }
         /**
          * @brief Returns the currently active pointer-to-member this trampoline adapts.
          */
-        this_callback_void get_method()
+        member_function_pointer get_method() const
         {
             return method;
         }
-    
+
     private:
         /**
-         * @brief This is the raw assembly code that performs the trampoline action.
+         * @brief Conditionally adjusts the size of the asm_code block depending on the number of parameters.
+         * 
+         * @tparam Count 
          */
-        uint16_t __attribute__((aligned(4))) asm_code[4] =
+        template<int Count> struct AsmCode;
+        template<int Count> requires (Count >= 0 && Count <= 1) struct AsmCode<Count>
         {
-            0x4801, // ldr r0, [pc, #4] ; self
-            0x4902, // ldr r1, [pc, #8] ; method
-            0x4708, // bx r1
-            0xBF00, // nop ; required for data/instruction alignment
+            uint8_t volatile __attribute__((aligned(4))) code[8] =
+            {
+                0x01, 0x46, // mov r1, r0
+                0x01, 0x48, // ldr r0, [pc, #4]
+                0x01, 0x4C, // ldr r4, [pc, #4]
+                0x20, 0x47, // bx  r4
+            };
         };
+        template<int Count> requires (Count >= 2 && Count <= 3) struct AsmCode<Count>
+        {
+            uint8_t volatile __attribute__((aligned(4))) code[12] =
+            {
+                0x13, 0x46, // mov r3, r2
+                0x0A, 0x46, // mov r2, r1
+                0x01, 0x46, // mov r1, r0
+                0x01, 0x48, // ldr r0, [pc, #4]
+                0x01, 0x4C, // ldr r4, [pc, #4]
+                0x20, 0x47, // bx  r4
+            };
+        };
+        AsmCode<sizeof...(Args)> asm_code;
+        /* Alternatively, we could derive the this pointer from PC, 
+         * but that requires introducing the offset as a parameter.
+         * 
+         * 0x00, 0xBF, // nop ; For padding/instruction alignment
+         * 0x78, 0x46, // mov r0, pc
+         * offset_byte, 0x38, // subs r0, offset */  
 
         /**
          * @brief This is just a reference back to the object this is trying to wrap.
@@ -108,7 +153,7 @@ struct __attribute__((__packed__)) c_trampoline
         /**
          * @brief This is the actual member function pointer being wrapped.
          */
-        this_callback_void method; // DO NOT change the order of this member or asm_code will be invalid!
+        member_function_pointer method; // DO NOT change the order of this member or asm_code will be invalid!
 };
 
 #endif /* C_TRAMPOLINE_H */
