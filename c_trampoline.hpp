@@ -41,7 +41,7 @@ template<int Count, typename ... Args> concept NotTooManyArgs = sizeof...(Args) 
  * 
  * @tparam T The class type is required because this adapts a pointer-to-method, which is class-specific.
  * @tparam R Return type of function pointer type being adapted.
- * @tparam Args List of zero to three additional parameters to the function.
+ * @tparam Args List of zero to two additional parameters to the function.
  */
 template<typename T, typename R, FitsInRegister... Args>
 requires ((sizeof(R) <= 8) || VoidReturn<R>) && NotTooManyArgs<3, Args...>
@@ -113,34 +113,60 @@ struct __attribute__((__packed__)) c_trampoline
         /**
          * @brief Conditionally adjusts the size of the asm_code block depending on the number of parameters.
          * 
-         * @tparam Count 
+         * @tparam Count Number of arguments
          */
         template<int Count> struct AsmCode;
-        template<int Count> requires (Count >= 0 && Count <= 1) struct AsmCode<Count>
+        template<int Count> requires (Count == 0) struct AsmCode<Count>
+        {
+            uint8_t volatile __attribute__((aligned(4))) code[8] =
+            {
+                            // ; PC is measured from the address of the start of the next instruction pair.
+                0x01, 0x48, // ldr r0, [pc, #4]     ; self
+                0x01, 0x4B, // ldr r3, [pc, #8]     ; method (note that both LDRs are in the SAME pair)
+                0x18, 0x47, // bx  r3
+                0x00, 0xBF, // nop
+            };
+        };
+        template<int Count> requires (Count == 1) struct AsmCode<Count>
         {
             uint8_t volatile __attribute__((aligned(4))) code[8] =
             {
                 0x01, 0x46, // mov r1, r0
-                0x01, 0x48, // ldr r0, [pc, #4]
-                0x01, 0x4C, // ldr r4, [pc, #4]
-                0x20, 0x47, // bx  r4
+                0x01, 0x48, // ldr r0, [pc, #4]     ; self
+                0x01, 0x4B, // ldr r3, [pc, #4]     ; method (note that both LDRs are in DIFFERENT pairs)
+                0x18, 0x47, // bx  r3
             };
         };
-        template<int Count> requires (Count >= 2 && Count <= 3) struct AsmCode<Count>
+        template<int Count> requires (Count == 2) struct AsmCode<Count>
         {
             uint8_t volatile __attribute__((aligned(4))) code[12] =
             {
-                0x13, 0x46, // mov r3, r2
                 0x0A, 0x46, // mov r2, r1
                 0x01, 0x46, // mov r1, r0
-                0x01, 0x48, // ldr r0, [pc, #4]
-                0x01, 0x4C, // ldr r4, [pc, #4]
-                0x20, 0x47, // bx  r4
+                0x01, 0x48, // ldr r0, [pc, #4]     ; self
+                0x02, 0x4B, // ldr r3, [pc, #8]     ; method (note that both LDRs are in the SAME pair)
+                0x18, 0x47, // bx  r3
+                0x00, 0xBF, // nop
+            };
+        };
+        template<int Count> requires (Count == 3) struct AsmCode<Count>
+        {
+            uint8_t volatile __attribute__((aligned(4))) code[16] =
+            {
+                0x13, 0x46, // mov r3, r2
+                0x0a, 0x46, // mov r2, r1
+                0x01, 0x46, // mov r1, r0
+                            // ; r12 also need not be preserved
+                0x01, 0x48, // ldr r0, [pc, #12]    ; method
+                0x84, 0x46, // mov r12, r0
+                0x01, 0x48, // ldr r0, [pc, #4]     ; self
+                0x60, 0x47, // bx r12
+                0x00, 0xbf, // nop
             };
         };
         AsmCode<sizeof...(Args)> asm_code;
         /* Alternatively, we could derive the this pointer from PC, 
-         * but that requires introducing the offset as a parameter.
+         * but that requires introducing the offset as a parameter to the template.
          * 
          * 0x00, 0xBF, // nop ; For padding/instruction alignment
          * 0x78, 0x46, // mov r0, pc
