@@ -23,7 +23,7 @@ This is cursed for several reasons:
 
 On the other hand:
 
- - Only 16 or 20 bytes per trampoline.
+ - Only 16 to 24 bytes per trampoline (depending on number of arguments).
  - Efficient.
    It might be more efficient than the C adapter method because there's no need to access a global variable.
  - The trampoline awkwardness can be kept entirely (more or less) in the object's header.
