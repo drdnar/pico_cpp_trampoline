@@ -41,7 +41,7 @@ template<int Count, typename ... Args> concept NotTooManyArgs = sizeof...(Args) 
  * 
  * @tparam T The class type is required because this adapts a pointer-to-method, which is class-specific.
  * @tparam R Return type of function pointer type being adapted.
- * @tparam Args List of zero to two additional parameters to the function.
+ * @tparam Args List of zero to three additional parameters to the function.
  */
 template<typename T, typename R, FitsInRegister... Args>
 requires ((sizeof(R) <= 8) || VoidReturn<R>) && NotTooManyArgs<3, Args...>
