@@ -82,14 +82,14 @@ struct __attribute__((__packed__)) c_trampoline
          */
         operator function_pointer() const
         {
-            return reinterpret_cast<function_pointer>((uint8_t*)asm_code + 1); // Plus one to stay in Thumb node.
+            return reinterpret_cast<function_pointer>((uint8_t*)&asm_code + 1); // Plus one to stay in Thumb node.
         }
         /**
          * @brief Returns a function pointer that can be passed to whatever wants a legit callback.
          */
         function_pointer get_callback() const
         {
-            return reinterpret_cast<function_pointer>((uint8_t*)asm_code + 1);
+            return reinterpret_cast<function_pointer>((uint8_t*)&asm_code + 1);
         }
         
         /**
