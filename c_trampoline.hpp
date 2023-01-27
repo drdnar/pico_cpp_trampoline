@@ -122,7 +122,7 @@ struct __attribute__((__packed__)) c_trampoline
             {
                             // ; PC is measured from the address of the start of the next instruction pair.
                 0x01, 0x48, // ldr r0, [pc, #4]     ; self
-                0x01, 0x4B, // ldr r3, [pc, #8]     ; method (note that both LDRs are in the SAME pair)
+                0x02, 0x4B, // ldr r3, [pc, #8]     ; method (note that both LDRs are in the SAME pair)
                 0x18, 0x47, // bx  r3
                 0x00, 0xBF, // nop
             };
@@ -157,7 +157,7 @@ struct __attribute__((__packed__)) c_trampoline
                 0x0a, 0x46, // mov r2, r1
                 0x01, 0x46, // mov r1, r0
                             // ; r12 also need not be preserved
-                0x01, 0x48, // ldr r0, [pc, #12]    ; method
+                0x03, 0x48, // ldr r0, [pc, #12]    ; method
                 0x84, 0x46, // mov r12, r0
                 0x01, 0x48, // ldr r0, [pc, #4]     ; self
                 0x60, 0x47, // bx r12
