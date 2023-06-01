@@ -45,7 +45,7 @@ template<int Count, typename ... Args> concept NotTooManyArgs = sizeof...(Args) 
  */
 template<typename T, typename R, FitsInRegister... Args>
 requires ((sizeof(R) <= 8) || VoidReturn<R>) && NotTooManyArgs<3, Args...>
-struct __attribute__((__packed__)) c_trampoline
+struct __attribute__((packed, aligned(4))) c_trampoline
 {
         /**
          * @brief Type of a member function pointer.
