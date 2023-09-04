@@ -118,59 +118,56 @@ struct __attribute__((packed, aligned(4))) c_trampoline
         template<int Count> struct AsmCode;
         template<int Count> requires (Count == 0) struct AsmCode<Count>
         {
-            uint8_t volatile __attribute__((aligned(4))) code[8] =
+            uint16_t volatile __attribute__((aligned(4))) code[4] =
             {
-                            // ; PC is measured from the address of the start of the next instruction pair.
-                0x01, 0x48, // ldr r0, [pc, #4]     ; self
-                0x02, 0x4B, // ldr r3, [pc, #8]     ; method (note that both LDRs are in the SAME pair)
-                0x18, 0x47, // bx  r3
-                0x00, 0xBF, // nop
+                        // ; PC is measured from the address of the start of the next instruction pair.
+                0x4801, // ldr r0, [pc, #4]     ; self
+                0x4B02, // ldr r3, [pc, #8]     ; method (note that both LDRs are in the SAME pair)
+                0x4718, // bx  r3
+                0xBF00, // nop
             };
         };
         template<int Count> requires (Count == 1) struct AsmCode<Count>
         {
-            uint8_t volatile __attribute__((aligned(4))) code[8] =
+            uint16_t volatile __attribute__((aligned(4))) code[4] =
             {
-                0x01, 0x46, // mov r1, r0
-                0x01, 0x48, // ldr r0, [pc, #4]     ; self
-                0x01, 0x4B, // ldr r3, [pc, #4]     ; method (note that both LDRs are in DIFFERENT pairs)
-                0x18, 0x47, // bx  r3
+                0x4601, // mov r1, r0
+                0x4801, // ldr r0, [pc, #4]     ; self
+                0x4B01, // ldr r3, [pc, #4]     ; method (note that both LDRs are in DIFFERENT pairs)
+                0x4718, // bx  r3
             };
         };
         template<int Count> requires (Count == 2) struct AsmCode<Count>
         {
-            uint8_t volatile __attribute__((aligned(4))) code[12] =
+            uint16_t volatile __attribute__((aligned(4))) code[6] =
             {
-                0x0A, 0x46, // mov r2, r1
-                0x01, 0x46, // mov r1, r0
-                0x01, 0x48, // ldr r0, [pc, #4]     ; self
-                0x02, 0x4B, // ldr r3, [pc, #8]     ; method (note that both LDRs are in the SAME pair)
-                0x18, 0x47, // bx  r3
-                0x00, 0xBF, // nop
+                0x460A, // mov r2, r1
+                0x4601, // mov r1, r0
+                0x4801, // ldr r0, [pc, #4]     ; self
+                0x4B02, // ldr r3, [pc, #8]     ; method (note that both LDRs are in the SAME pair)
+                0x4718, // bx  r3
+                0xBF00, // nop
             };
         };
         template<int Count> requires (Count == 3) struct AsmCode<Count>
         {
-            uint8_t volatile __attribute__((aligned(4))) code[16] =
+            uint16_t volatile __attribute__((aligned(4))) code[8] =
             {
-                0x13, 0x46, // mov r3, r2
-                0x0a, 0x46, // mov r2, r1
-                0x01, 0x46, // mov r1, r0
-                            // ; r12 also need not be preserved
-                0x03, 0x48, // ldr r0, [pc, #12]    ; method
-                0x84, 0x46, // mov r12, r0
-                0x01, 0x48, // ldr r0, [pc, #4]     ; self
-                0x60, 0x47, // bx r12
-                0x00, 0xbf, // nop
+                0x4613, // mov r3, r2
+                0x460A, // mov r2, r1
+                0x4601, // mov r1, r0
+                        // ; r12 also need not be preserved
+                0x4803, // ldr r0, [pc, #12]    ; method
+                0x4684, // mov r12, r0
+                0x4801, // ldr r0, [pc, #4]     ; self
+                0x4760, // bx r12
+                0xBF00, // nop
             };
         };
         AsmCode<sizeof...(Args)> asm_code;
         /* Alternatively, we could derive the this pointer from PC, 
          * but that requires introducing the offset as a parameter to the template.
-         * 
-         * 0x00, 0xBF, // nop ; For padding/instruction alignment
-         * 0x78, 0x46, // mov r0, pc
-         * offset_byte, 0x38, // subs r0, offset */  
+         */  
 
         /**
          * @brief This is just a reference back to the object this is trying to wrap.
